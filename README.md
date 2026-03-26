@@ -179,20 +179,105 @@ BTC 1H 示例:
 > **关键**: 选 us-east-1 可获得最低 WS 延迟（1-5ms），数据质量更高。
 > 如果用咸鱼便宜 VPS（非 us-east-1），延迟会高一些但对回测数据影响不大。
 
-### 部署方式
+### 快速部署
 
 ```bash
-# 1. 安装依赖
-pip install websockets numpy requests pyyaml
+# 一键 setup（推荐）
+bash scripts/setup_vps.sh
 
-# 2. 配置
-cp config.example.yaml config.yaml
-# 编辑 config.yaml 设置采集参数
+# 或手动：
+# 1. 安装系统依赖
+apt update && apt install -y python3 python3-venv rsync
 
-# 3. 用 systemd 运行
-sudo cp deploy/polymarket-collector.service /etc/systemd/system/
-sudo systemctl enable polymarket-collector
-sudo systemctl start polymarket-collector
+# 2. 创建虚拟环境 & 安装 Python 依赖
+cd /usr/local/application/polymarket-hft-live-data-collector
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 3. 安装 systemd 服务
+cp deploy/polymarket-collector.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable polymarket-collector
+```
+
+### 测试运行（前台）
+
+```bash
+cd /usr/local/application/polymarket-hft-live-data-collector
+source .venv/bin/activate
+python -m src.main -c config_test.yaml   # 仅采集 BTC 1H
+python -m src.main -c config.yaml        # 全量采集
+```
+
+> Ctrl+C 可安全停止，程序会 flush 所有缓冲区。
+
+### systemd 服务管理
+
+采集器通过 **systemd 系统服务** 运行，优于 screen/tmux：
+- 开机自启
+- 崩溃后 10 秒自动重启（`Restart=always`）
+- 不依赖 SSH 会话
+- 日志自动由 journald 管理
+
+```bash
+# 启动服务
+systemctl start polymarket-collector
+
+# 查看服务状态
+systemctl status polymarket-collector
+
+# 停止服务
+systemctl stop polymarket-collector
+
+# 重启服务
+systemctl restart polymarket-collector
+
+# 开机自启（setup 已执行）
+systemctl enable polymarket-collector
+
+# 取消开机自启
+systemctl disable polymarket-collector
+```
+
+### 日志查看
+
+```bash
+# 实时日志（Ctrl+C 退出）
+journalctl -u polymarket-collector -f
+
+# 最近 100 行
+journalctl -u polymarket-collector -n 100 --no-pager
+
+# 今天的日志
+journalctl -u polymarket-collector --since today --no-pager
+
+# 搜索错误
+journalctl -u polymarket-collector --no-pager | grep ERROR
+```
+
+### 常用运维命令
+
+```bash
+# 查看当前采集进程
+systemctl status polymarket-collector
+
+# 查看磁盘占用
+du -sh data/*/
+
+# 查看今天采集的文件数
+find data/ -name "*.jsonl" -newer data/ -type f | wc -l
+
+# 查看某个市场的数据行数
+wc -l data/btc_1h/2026-03-26/*.jsonl
+
+# 修改配置后重启
+vi config.yaml
+systemctl restart polymarket-collector
+
+# 查看 systemd service 文件
+cat /etc/systemd/system/polymarket-collector.service
 ```
 
 ## 项目文件结构

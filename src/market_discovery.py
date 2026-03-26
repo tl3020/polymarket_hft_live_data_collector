@@ -85,7 +85,7 @@ class MarketDiscovery:
                     ("tag_slug", "up-or-down"),
                     ("tag_slug", asset_tag),
                     ("closed", "false"),
-                    ("limit", "20"),
+                    ("limit", "100"),
                 ],
                 timeout=15,
             )
