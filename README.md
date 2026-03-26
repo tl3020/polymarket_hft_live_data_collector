@@ -162,6 +162,78 @@ BTC 1H 示例:
 4. 可选: converter/mirror.py → UP NPZ 生成 DOWN NPZ
 ```
 
+### 本地数据同步
+
+VPS 采集的数据需要同步到本地用于分析和回测。
+
+#### 同步原理
+
+`scripts/sync_to_local.sh` 使用 rsync **只同步已完成（gzip 压缩后）的数据**：
+- ✅ 下载 `*.jsonl.gz` — 已结束并压缩的市场数据
+- ❌ 跳过 `*.jsonl` — 仍在活跃采集的市场
+
+这意味着只有市场结算后（文件自动 gzip 压缩），数据才会同步到本地。
+
+#### 使用方法
+
+**前提**: 本地需安装 rsync 和 SSH（Windows 推荐使用 Git Bash 或 WSL）
+
+```bash
+# 基本用法
+bash scripts/sync_to_local.sh [VPS_HOST] [SSH_PORT] [LOCAL_DIR]
+
+# 示例（使用默认配置）
+bash scripts/sync_to_local.sh
+
+# 指定参数
+bash scripts/sync_to_local.sh root@your-vps-ip 22 /path/to/local/data
+
+# Windows (Git Bash)
+bash scripts/sync_to_local.sh root@your-vps-ip 22 D:/polymarket_data/live
+```
+
+#### 定时自动同步（推荐）
+
+**Linux/macOS** — 加入 crontab 每小时同步：
+```bash
+crontab -e
+# 添加以下行:
+0 * * * * /path/to/scripts/sync_to_local.sh root@vps-ip 22 /path/to/local/data >> /tmp/polymarket_sync.log 2>&1
+```
+
+**Windows** — 使用 Task Scheduler：
+1. 创建基本任务 → 触发器设为每小时
+2. 操作: 启动程序 → `C:\Program Files\Git\bin\bash.exe`
+3. 参数: `-c "/path/to/sync_to_local.sh root@vps-ip 22 D:/polymarket_data/live"`
+
+#### 同步后的本地目录结构
+
+```
+D:/polymarket_data/live/
+├── btc_1h/
+│   └── 2026-03-26/
+│       ├── bitcoin-up-or-down-march-26-2026-4am-et.jsonl.gz
+│       ├── bitcoin-up-or-down-march-26-2026-5am-et.jsonl.gz
+│       └── ...
+├── btc_4h/
+├── eth_1h/
+├── sol_1h/
+└── xrp_1h/
+```
+
+#### 手动检查同步状态
+
+```bash
+# VPS 上查看已压缩文件数（可同步）
+find data/ -name "*.jsonl.gz" | wc -l
+
+# VPS 上查看仍在采集的文件（不会同步）
+find data/ -name "*.jsonl" | wc -l
+
+# 本地查看已同步的数据量
+du -sh /path/to/local/data/
+```
+
 ## VPS 部署要求
 
 ### 推荐配置
