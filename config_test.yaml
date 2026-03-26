@@ -1,0 +1,25 @@
+# 测试配置 — 只采集 BTC 1H
+collector:
+  data_dir: "./data"
+  log_level: "DEBUG"
+
+targets:
+  - asset: btc
+    timeframe: 1h
+    series_slug: "btc-up-or-down-hourly"
+    enabled: true
+
+websocket:
+  url: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+  heartbeat_interval: 8
+  reconnect_base_delay: 3
+  reconnect_max_delay: 30
+  max_tokens_per_connection: 25
+
+gamma:
+  base_url: "https://gamma-api.polymarket.com"
+  discovery_interval: 300
+  request_delay: 0.2
+
+clob:
+  base_url: "https://clob.polymarket.com"

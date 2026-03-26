@@ -5,13 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/live_data_collector
-ExecStart=/home/ubuntu/poly_env/bin/python -m src.main -c config.yaml
+User=root
+WorkingDirectory=/usr/local/application/polymarket-hft-live-data-collector
+ExecStart=/usr/local/application/polymarket-hft-live-data-collector/.venv/bin/python -m src.main -c config.yaml
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
