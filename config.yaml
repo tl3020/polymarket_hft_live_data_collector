@@ -1,0 +1,93 @@
+# 采集配置
+collector:
+  # 数据存储根目录
+  data_dir: "./data"
+  # 日志级别
+  log_level: "INFO"
+
+# 采集目标
+targets:
+  - asset: btc
+    timeframe: 1h
+    series_slug: "btc-up-or-down-hourly"
+    enabled: true
+
+  - asset: btc
+    timeframe: 4h
+    series_slug: "btc-up-or-down-4h"
+    enabled: true
+
+  - asset: btc
+    timeframe: 1d
+    series_slug: "btc-up-or-down-daily"
+    enabled: true
+
+  - asset: eth
+    timeframe: 1h
+    series_slug: "eth-up-or-down-hourly"
+    enabled: true
+
+  - asset: eth
+    timeframe: 4h
+    series_slug: "eth-up-or-down-4h"
+    enabled: true
+
+  - asset: eth
+    timeframe: 1d
+    series_slug: "eth-up-or-down-daily"
+    enabled: true
+
+  - asset: sol
+    timeframe: 1h
+    series_slug: "solana-up-or-down-hourly"
+    enabled: true
+
+  - asset: sol
+    timeframe: 4h
+    series_slug: "sol-up-or-down-4h"
+    enabled: true
+
+  - asset: sol
+    timeframe: 1d
+    series_slug: "solana-up-or-down-daily"
+    enabled: true
+
+  - asset: xrp
+    timeframe: 1h
+    series_slug: "xrp-up-or-down-hourly"
+    enabled: true
+
+  - asset: xrp
+    timeframe: 4h
+    series_slug: "xrp-up-or-down-4h"
+    enabled: true
+
+  - asset: xrp
+    timeframe: 1d
+    series_slug: "xrp-up-or-down-daily"
+    enabled: true
+
+# WebSocket 配置
+websocket:
+  url: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+  heartbeat_interval: 8  # 秒
+  reconnect_base_delay: 3  # 秒
+  reconnect_max_delay: 30  # 秒
+  max_tokens_per_connection: 25  # 单连接最大订阅 token 数
+
+# Gamma API 配置
+gamma:
+  base_url: "https://gamma-api.polymarket.com"
+  discovery_interval: 300  # 秒（每 5 分钟发现新市场）
+  request_delay: 0.2  # 秒（请求间隔，避免 rate limit）
+
+# CLOB API 配置
+clob:
+  base_url: "https://clob.polymarket.com"
+
+# 数据同步
+sync:
+  enabled: false
+  # rsync 目标路径（本地或远程）
+  # target: "user@local-machine:/path/to/data"
+  interval: 3600  # 秒

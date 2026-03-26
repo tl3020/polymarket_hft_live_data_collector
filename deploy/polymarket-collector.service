@@ -1,0 +1,17 @@
+[Unit]
+Description=Polymarket Live Data Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/live_data_collector
+ExecStart=/home/ubuntu/poly_env/bin/python -m src.main -c config.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
