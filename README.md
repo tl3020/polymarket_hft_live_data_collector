@@ -168,70 +168,116 @@ VPS 采集的数据需要同步到本地用于分析和回测。
 
 #### 同步原理
 
-`scripts/sync_to_local.sh` 使用 rsync **只同步已完成（gzip 压缩后）的数据**：
+同步脚本 **只下载已完成（gzip 压缩后）的数据**：
 - ✅ 下载 `*.jsonl.gz` — 已结束并压缩的市场数据
 - ❌ 跳过 `*.jsonl` — 仍在活跃采集的市场
 
 这意味着只有市场结算后（文件自动 gzip 压缩），数据才会同步到本地。
 
-#### 使用方法
+#### 前置条件
 
-**前提**: 本地需安装 rsync 和 SSH（Windows 推荐使用 Git Bash 或 WSL）
+1. 已配置 SSH 免密登录（`~/.ssh/config` 中有 `polymarket-vps` Host）
+2. 验证 SSH 连接正常：
+   ```powershell
+   ssh polymarket-vps "echo OK"
+   ```
+
+#### Windows PowerShell 同步（推荐）
+
+脚本位置: `scripts/sync_to_local.ps1`
+
+**一次性同步**:
+```powershell
+cd D:\quant_trading_workspace\research\polymarket_market_making\live_data_collector
+.\scripts\sync_to_local.ps1
+```
+
+**循环同步模式**（每小时自动同步一次）:
+```powershell
+.\scripts\sync_to_local.ps1 -Loop
+```
+
+**自定义同步间隔**（例如每 30 分钟）:
+```powershell
+.\scripts\sync_to_local.ps1 -Loop -IntervalMin 30
+```
+
+> 循环模式需要保持 PowerShell 窗口打开，电脑不能进入睡眠。
+
+#### Windows 任务计划程序（无人值守）
+
+如果希望电脑开机后自动同步（不需要手动打开 PowerShell），可使用任务计划程序：
+
+1. 打开「任务计划程序」（`Win + R` → `taskschd.msc`）
+2. 右侧 → **创建基本任务**
+3. 名称: `Polymarket Data Sync`
+4. 触发器: **每天** → 开始时间设为 `00:00`，勾选「每隔 1 小时重复一次，持续 1 天」
+5. 操作: **启动程序**
+   - 程序: `powershell.exe`
+   - 参数: `-ExecutionPolicy Bypass -File "D:\quant_trading_workspace\research\polymarket_market_making\live_data_collector\scripts\sync_to_local.ps1"`
+   - 起始于: `D:\quant_trading_workspace\research\polymarket_market_making\live_data_collector`
+6. 勾选「完成后打开属性对话框」→ 完成
+7. 在属性中：
+   - **常规** → 勾选「不管用户是否登录都要运行」
+   - **条件** → 取消勾选「只有计算机使用交流电时才启动」
+   - **设置** → 勾选「如果任务运行超过以下时间则停止: 1 小时」
+
+> 注意: 使用任务计划程序时，「不管用户是否登录都要运行」需要输入 Windows 登录密码。
+
+#### Linux / macOS Bash 同步
 
 ```bash
-# 基本用法
-bash scripts/sync_to_local.sh [VPS_HOST] [SSH_PORT] [LOCAL_DIR]
-
-# 示例（使用默认配置）
+# 一次性同步
 bash scripts/sync_to_local.sh
 
-# 指定参数
-bash scripts/sync_to_local.sh root@your-vps-ip 22 /path/to/local/data
-
-# Windows (Git Bash)
-bash scripts/sync_to_local.sh root@your-vps-ip 22 D:/polymarket_data/live
-```
-
-#### 定时自动同步（推荐）
-
-**Linux/macOS** — 加入 crontab 每小时同步：
-```bash
+# 加入 crontab 每小时自动同步
 crontab -e
-# 添加以下行:
-0 * * * * /path/to/scripts/sync_to_local.sh root@vps-ip 22 /path/to/local/data >> /tmp/polymarket_sync.log 2>&1
+0 * * * * cd /path/to/live_data_collector && bash scripts/sync_to_local.sh >> .logs/sync.log 2>&1
 ```
-
-**Windows** — 使用 Task Scheduler：
-1. 创建基本任务 → 触发器设为每小时
-2. 操作: 启动程序 → `C:\Program Files\Git\bin\bash.exe`
-3. 参数: `-c "/path/to/sync_to_local.sh root@vps-ip 22 D:/polymarket_data/live"`
 
 #### 同步后的本地目录结构
 
 ```
-D:/polymarket_data/live/
-├── btc_1h/
-│   └── 2026-03-26/
-│       ├── bitcoin-up-or-down-march-26-2026-4am-et.jsonl.gz
-│       ├── bitcoin-up-or-down-march-26-2026-5am-et.jsonl.gz
-│       └── ...
-├── btc_4h/
-├── eth_1h/
-├── sol_1h/
-└── xrp_1h/
+D:\quant_trading_workspace\polymarket_data\live\
+├── data\                    # 原始 JSONL.gz
+│   ├── btc_1h\
+│   │   └── 2026-03-26\
+│   │       ├── bitcoin-up-or-down-march-26-2026-4am-et.jsonl.gz
+│   │       ├── bitcoin-up-or-down-march-26-2026-5am-et.jsonl.gz
+│   │       └── ...
+│   ├── btc_4h\
+│   ├── eth_1h\
+│   ├── sol_1h\
+│   └── xrp_1h\
+├── npz\                     # hftbacktest NPZ（转换后）
+│   ├── btc_1h\
+│   │   └── 2026-03-26\
+│   │       └── *.npz
+│   └── ...
+└── .logs\                   # 同步日志
+    └── sync_2026-03-26.log
+```
+
+#### 同步后转 NPZ
+
+同步完数据后，运行转换脚本生成 hftbacktest 格式：
+
+```powershell
+cd D:\quant_trading_workspace\research\polymarket_market_making\data_process
+python 13_convert_live_to_npz.py
 ```
 
 #### 手动检查同步状态
 
-```bash
-# VPS 上查看已压缩文件数（可同步）
-find data/ -name "*.jsonl.gz" | wc -l
+```powershell
+# 查看本地已同步的 gz 文件数
+(Get-ChildItem -Path "D:\quant_trading_workspace\polymarket_data\live\data" -Filter "*.jsonl.gz" -Recurse).Count
 
-# VPS 上查看仍在采集的文件（不会同步）
-find data/ -name "*.jsonl" | wc -l
+# 查看本地数据总大小
+(Get-ChildItem -Path "D:\quant_trading_workspace\polymarket_data\live\data" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
 
-# 本地查看已同步的数据量
-du -sh /path/to/local/data/
+# SSH 到 VPS 检查
+ssh polymarket-vps "find /usr/local/application/polymarket-hft-live-data-collector/data -name '*.jsonl.gz' | wc -l"
 ```
 
 ## VPS 部署要求
@@ -375,7 +421,8 @@ live_data_collector/
 │   └── batch_convert.py      # 批量转换脚本
 ├── scripts/
 │   ├── setup_vps.sh          # VPS 初始化脚本
-│   └── sync_to_local.sh      # rsync 数据同步
+│   ├── sync_to_local.sh      # rsync 数据同步 (Linux/macOS)
+│   └── sync_to_local.ps1     # scp 数据同步 (Windows PowerShell)
 ├── deploy/
 │   ├── polymarket-collector.service  # systemd 服务文件
 │   └── logrotate.conf        # 日志轮转
