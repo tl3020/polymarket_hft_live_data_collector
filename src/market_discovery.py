@@ -6,6 +6,7 @@ YES (UP) token_ids for WebSocket subscription.
 
 import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
@@ -27,6 +28,38 @@ ASSET_TAG_MAP = {
 }
 
 
+def _normalize_slug(slug: str) -> str:
+    """Convert epoch-based slugs to readable format.
+
+    Example: 'btc-updown-4h-1774569600' -> 'btc-updown-4h-mar27-2026-8pm-et'
+    """
+    m = re.match(r'^(.+)-(\d{10,})$', slug)
+    if not m:
+        return slug
+
+    prefix = m.group(1)
+    epoch = int(m.group(2))
+
+    try:
+        from zoneinfo import ZoneInfo
+
+        et = ZoneInfo("America/New_York")
+        dt = datetime.fromtimestamp(epoch, tz=et)
+
+        month = dt.strftime("%b").lower()
+        day = dt.day
+        year = dt.year
+        hour = dt.hour
+        ampm = "am" if hour < 12 else "pm"
+        hour12 = hour % 12
+        if hour12 == 0:
+            hour12 = 12
+
+        return f"{prefix}-{month}{day}-{year}-{hour12}{ampm}-et"
+    except Exception:
+        return slug
+
+
 @dataclass
 class Market:
     """A single Polymarket Up-or-Down market."""
@@ -42,6 +75,11 @@ class Market:
     series_slug: str
     tick_size: float = 0.01
     active: bool = True
+
+    @property
+    def file_slug(self) -> str:
+        """Slug normalized for file naming (epoch -> readable time)."""
+        return _normalize_slug(self.slug)
 
 
 class MarketDiscovery:

@@ -48,7 +48,7 @@ class JsonlWriter:
         if token_id not in self._files:
             out_dir = self._get_dir(market)
             os.makedirs(out_dir, exist_ok=True)
-            path = os.path.join(out_dir, f"{market.slug}.jsonl")
+            path = os.path.join(out_dir, f"{market.file_slug}.jsonl")
             self._paths[token_id] = path
             self._files[token_id] = open(path, "a", encoding="utf-8")
 
